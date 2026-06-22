@@ -1,9 +1,6 @@
 Timer = require 'libraries/hump/timer'
+AssetsPath = require 'rooms.AssetsPath'
 
-local IMG_MMBGMOR = "assets/sprites/Background/bg_mainmenu_morning.png"
-local IMG_MMBGAFTER = "assets/sprites/Background/bg_mainmenu_afternoon.png"
-local IMG_MMBGNIGHT = "assets/sprites/Background/bg_mainmenu_night.png"
-local IMG_NAMEGAME = "assets/sprites/Background/defensesquad.png"
 
 
 MMBackgroundLayer = Object:extend()
@@ -20,11 +17,11 @@ function MMBackgroundLayer:setBackGroundImagePosition()
     local imgPath, opacity
 
     if hour <= 6 or hour >= 18 then
-        imgPath, opacity = IMG_MMBGNIGHT, 175
+        imgPath, opacity = AssetsPath.IMG_MMBGNIGHT, 175
     elseif hour > 6 and hour < 15 then  
-        imgPath, opacity = IMG_MMBGMOR, 175 
+        imgPath, opacity = AssetsPath.IMG_MMBGMOR, 175 
     else
-        imgPath, opacity = IMG_MMBGAFTER, 150
+        imgPath, opacity = AssetsPath.IMG_MMBGAFTER, 150
     end
 
     self._bg = love.graphics.newImage(imgPath)
@@ -36,7 +33,7 @@ end
 
 function MMBackgroundLayer:setNameGamePosition()
     self._timer = Timer.new()
-    self._name = love.graphics.newImage(IMG_NAMEGAME)
+    self._name = love.graphics.newImage(AssetsPath.IMG_NAMEGAME)
 
     self._nameX = 10 + self._screenW / 2
     self._nameY = self._screenH

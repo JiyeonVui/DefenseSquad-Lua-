@@ -1,5 +1,5 @@
-local layout = require("rooms/GSDefine") 
-local brick = require("rooms/GSBrick")
+local layout = require("rooms/GameScene/GSDefine") 
+local brick = require("rooms/GameScene/GSBrick")
 
 GSMap = Object:extend();
 

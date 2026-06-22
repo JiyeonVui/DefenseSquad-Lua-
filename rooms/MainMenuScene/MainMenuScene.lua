@@ -1,5 +1,5 @@
-local MMBackgroundLayer = require("rooms/MMBackgroundLayer")
-local MMControl = require("rooms/MMControl")
+local MMBackgroundLayer = require("rooms/MainMenuScene/MMBackgroundLayer")
+local MMControl = require("rooms/MainMenuScene/MMControl")
 
 MainMenuScene = Object:extend()
 

@@ -1,5 +1,5 @@
-local LevelModel = require("objects/Model/LevelModel")
-local GSMap = require("rooms/GSMap")
+local LevelModel = require("objects.Model.LevelModel")
+local GSMap = require("rooms.GameScene.GSMap")
 
 GameScene = Object:extend()
 

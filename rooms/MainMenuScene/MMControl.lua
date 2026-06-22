@@ -17,7 +17,8 @@ function MMControl:new()
 end
 
 function MMControl:goToLevelScene()
-    print("[MMControl] goToLevelScene - chuyen sang LevelScene")
+    print("[MMControl] goToLevelScene -> LevelScene")
+    gotoRoom('LevelScene')
 end
 
 function MMControl:goToOptions()
