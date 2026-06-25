@@ -1,11 +1,13 @@
 local LevelModel = require("objects.Model.LevelModel")
 local GSMap = require("rooms.GameScene.GSMap")
+local GSControlLayer = require("rooms.GameScene.GSControlLayer")
 
 GameScene = Object:extend()
 
 function GameScene:new(levelId)
     self._level = nil
     self._gsMap = nil
+    self._control = nil
     self._bgImage = nil
     -- init
 
@@ -23,6 +25,10 @@ end
 function GameScene:setupMap()
     self._gsMap = GSMap()
     self._gsMap:createMap(self._level)   -- dựng canvas map (1 lần)
+
+    -- Tầng đặt cell: DÙNG CHUNG MapLayout với GSMap, rồi inject vào LevelModel.
+    self._control = GSControlLayer(self._gsMap:getLayout(), self._level)
+    self._level:setControlLayer(self._control)
 end
 
 
@@ -33,6 +39,19 @@ end
 
 function GameScene:update(dt)
     self._level:update(dt)
+    if self._control then self._control:update(dt) end
+end
+
+function GameScene:mousepressed(x, y, button)
+    if self._control then self._control:mousepressed(x, y, button) end
+end
+
+function GameScene:mousemoved(x, y)
+    if self._control then self._control:mousemoved(x, y) end
+end
+
+function GameScene:mousereleased(x, y, button)
+    if self._control then self._control:mousereleased(x, y, button) end
 end
 
 function GameScene:drawMap()
@@ -53,6 +72,9 @@ function GameScene:draw()
 
     -- 3. Entities (cell, disease, projectile) — trên map
     -- self._level:draw()
+
+    -- 3.5 Tầng đặt cell: preview + ô gợi ý đặt được (trên map, dưới HUD)
+    if self._control then self._control:draw() end
 
     -- 4. UI/HUD trên cùng
     -- self._level:drawHUD()

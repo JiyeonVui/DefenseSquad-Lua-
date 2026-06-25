@@ -1,3 +1,5 @@
+CharacterModelDefinition = require('objects/Model/CharacterModelDefinition')
+
 CharacterModel = Object:extend()
 
 function CharacterModel:new(charType)

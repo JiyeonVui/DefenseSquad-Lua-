@@ -2,16 +2,19 @@ local json = require 'libraries/json/json' -- TODO: provide rxi/json.lua at this
 
 LevelModel = Object:extend()
 
--- Marker stored in a map cell once it has been seeded as an energy source.
-local ENERGY_SOURCE = "energy_source"
-
 
 function LevelModel:new(level, stage)
     self._levelId = level or 0
     self._stage   = stage
 
-    -- Grid. map[y][x] is a cell descriptor table (type, occupant, ...).
+    -- Địa hình TĨNH: map[x][y] (col-major, khớp JSON). Mỗi ô là số nguyên loại ô.
     self._map = {}
+
+    -- Trạng thái ĐỘNG, tách hẳn khỏi địa hình (col-major):
+    --   _occupants[x][y]     = cell đang chiếm ô
+    --   _energySources[x][y] = true nếu ô là nguồn năng lượng
+    self._occupants     = {}
+    self._energySources = {}
 
     -- Enemy pathing. enemyPaths is a list of paths; each path is a list of nodes.
     self._enemyPaths = {}
@@ -50,6 +53,7 @@ function LevelModel:new(level, stage)
     self._progressor = nil -- UIProgressor
     self._pauser     = nil -- UIPause
     self._remover    = nil -- UIRemove
+    self._control    = nil -- GSControlLayer (do GameScene inject sau khi dựng map)
 
     self._reward = 0
 
@@ -66,6 +70,18 @@ function LevelModel:getMap() return self._map end
 -- Original exposed a const copy (getMap) and a mutable ref (__getMap). In Lua a
 -- table is already a reference, so both map to the same accessor.
 LevelModel.__getMap = LevelModel.getMap
+
+-- True nếu ô (x, y) đang có cell chiếm (lớp động, col-major).
+function LevelModel:isOccupied(x, y)
+    local col = self._occupants[x]
+    return col ~= nil and col[y] ~= nil
+end
+
+-- Cell đang chiếm ô (x, y), hoặc nil.
+function LevelModel:getOccupant(x, y)
+    local col = self._occupants[x]
+    return col and col[y]
+end
 
 -- Return the list of waves.
 function LevelModel:getWaveList() return self._waveList end
@@ -87,6 +103,11 @@ LevelModel.__getEnemyPath = LevelModel.getEnemyPath
 function LevelModel:getEndPaths()   return self._endPaths end
 function LevelModel:getBeginPaths() return self._beginPaths end
 function LevelModel:getLevelId()    return self._levelId end
+
+-- Tầng đặt cell (do GameScene tạo và inject). Model giữ tham chiếu để điều phối
+-- (chọn cell, bật chế độ remove...), KHÔNG tự dựng — giống _pauser/_remover.
+function LevelModel:setControlLayer(control) self._control = control end
+function LevelModel:getControlLayer()        return self._control end
 
 -- Reward granted for clearing the level.
 function LevelModel:getReward() return self._reward end
@@ -130,9 +151,11 @@ end
 
 -- Spawn a collectable energy object at grid cell (cellX, cellY).
 function LevelModel:addEnergyObject(cellX, cellY)
-    local row = self._map[cellY]
-    if row and row[cellX] then
-        row[cellX].type = ENERGY_SOURCE
+    -- col-major map[x][y]. Đánh dấu nguồn năng lượng ở lớp động riêng,
+    -- KHÔNG ghi đè loại địa hình của ô.
+    if self._map[cellX] and self._map[cellX][cellY] ~= nil then
+        self._energySources[cellX] = self._energySources[cellX] or {}
+        self._energySources[cellX][cellY] = true
     end
     -- TODO: spawn an EnergyObject game object in the stage's Area at this cell.
 end
@@ -148,10 +171,9 @@ function LevelModel:addCell(cell, cellX, cellY)
     cell.cellY = cellY
     table.insert(self._cellList, cell)
 
-    local row = self._map[cellY]
-    if row and row[cellX] then
-        row[cellX].occupant = cell
-    end
+    -- Đánh dấu ô (x, y) bị chiếm ở lớp động (col-major).
+    self._occupants[cellX] = self._occupants[cellX] or {}
+    self._occupants[cellX][cellY] = cell
     -- TODO: register `cell` with the stage's Area for update/draw.
 end
 
@@ -175,6 +197,10 @@ end
 function LevelModel:dumpCell(cell)
     cell.dead = true
     table.insert(self._cellDump, cell)
+
+    -- Giải phóng ô khi cell chết (col-major). Chỗ DUY NHẤT clear occupant.
+    local col = cell.cellX and self._occupants[cell.cellX]
+    if col then col[cell.cellY] = nil end
 end
 
 -- Flag a disease dead and queue it for collection.
@@ -191,11 +217,9 @@ end
 
 -- Find the cell occupying grid (x, y) and dump it, freeing the tile.
 function LevelModel:findAndRemoveCell(x, y)
-    local row = self._map[y]
-    local tile = row and row[x]
-    if tile and tile.occupant then
-        self:dumpCell(tile.occupant)
-        tile.occupant = nil
+    local cell = self:getOccupant(x, y)   -- (x, y) col-major
+    if cell then
+        self:dumpCell(cell)               -- dumpCell tự clear occupant
     end
 end
 

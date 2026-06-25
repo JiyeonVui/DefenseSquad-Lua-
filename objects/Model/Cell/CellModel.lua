@@ -12,14 +12,10 @@
 -- Constants (stand in for LevelModelDefinitions.h enums)
 --------------------------------------------------------------------------------
 
--- Map tile classification (MapPosition.type in C++).
-local MapPosition = {
-    EMPTY_CANNOT_PUT = 0,  -- decoration / blocked
-    EMPTY_CAN_PUT    = 1,  -- buildable ground for normal cells
-    ENEMY_PATH       = 2,  -- the lane diseases walk; on-path cells go here
-    BEGIN_PATH       = 3,
-    END_PATH         = 4,
-}
+-- Map tile classification. Dùng CHUNG enum với dữ liệu JSON + LevelModel
+-- (nguồn chân lý), KHÔNG tự định nghĩa lại giá trị nữa.
+--   JSON map[x][y] là số nguyên: 0 = EMPTY_CAN_PUT, 1 = ENEMY_PATH, ...
+local MapPosition = require('objects.Model.LevelModelDefinition').MapPosition
 
 -- Character status (CharacterStatus in C++).
 local CharacterStatus = {
@@ -89,39 +85,37 @@ CellModel.CharacterStatus = CharacterStatus
 -- Placement validation helpers (shared by the instance and static canPutOn).
 --------------------------------------------------------------------------------
 
--- True if (x, y) addresses a real tile in the grid.
+-- True if (x, y) addresses a real tile in the grid (map col-major: map[x][y]).
 local function inBounds(map, x, y)
-    return map[y] ~= nil and map[y][x] ~= nil
+    return map[x] ~= nil and map[x][y] ~= nil
 end
 
--- A tile may be a plain enum value or a table { type = ..., occupant = ... }.
+-- A tile may be a plain enum value or a table { type = ... }.
 local function tileType(tile)
     if type(tile) == "table" then return tile.type end
     return tile
 end
 
--- True if a cell already sits on this tile.
-local function tileOccupied(tile)
-    return type(tile) == "table" and tile.occupant ~= nil
-end
-
 -- Core rule check shared by instance and static canPutOn. Reproduces the C++
 -- per-CellId switch via the cell's `placement` category.
+-- Địa hình (loại ô) đọc từ map TĨNH; còn "đang bị chiếm" là trạng thái ĐỘNG
+-- do LevelModel quản lý riêng (level:isOccupied), không nhét vào ô địa hình.
 local function checkPlacement(placement, level, cellX, cellY)
     local map = level:getMap()
     if not inBounds(map, cellX, cellY) then return false end
 
-    local tile = map[cellY][cellX]
+    local tile     = map[cellX][cellY]            -- col-major: map[x][y]
+    local occupied = level:isOccupied(cellX, cellY)
 
     if placement == "remove" then
         -- REMOVE_CELL: only valid where a cell already exists.
-        return tileOccupied(tile)
+        return occupied
     elseif placement == "path" then
         -- On-path cells: must sit on the enemy lane and on a free tile.
-        return tileType(tile) == MapPosition.ENEMY_PATH and not tileOccupied(tile)
+        return tileType(tile) == MapPosition.ENEMY_PATH and not occupied
     else
         -- Normal cells: must sit on buildable, unoccupied ground.
-        return tileType(tile) == MapPosition.EMPTY_CAN_PUT and not tileOccupied(tile)
+        return tileType(tile) == MapPosition.EMPTY_CAN_PUT and not occupied
     end
 end
 
@@ -136,10 +130,10 @@ function CellModel:new(id)
     CellModel.super.new(self) -- CharacterModel:new()
 
     self._cellId = id or CellId.CELL_00
-    local stats = CELL_STATS[self.cellId] or {}
+    local stats = CELL_STATS[self._cellId] or {}
 
     self._hp           = stats.hp or 100
-    self._maxHp        = self.hp
+    self._maxHp        = self._hp
     self._cost         = stats.cost or 0
     self._rechargeTime = stats.rechargeTime or 1.0
     self._distance     = stats.distance or 0          -- attack range in pixels
@@ -180,16 +174,16 @@ end
 function CellModel:getDistance() return self._distance end
 
 -- This cell's CellId.
-function CellModel:getCellId() return self.cellId end
+function CellModel:getCellId() return self._cellId end
 
 -- Energy/gold cost to place this cell.
-function CellModel:getCost() return self.cost end
+function CellModel:getCost() return self._cost end
 
 -- Seconds between attacks.
-function CellModel:getRechargeTime() return self.rechargeTime end
+function CellModel:getRechargeTime() return self._rechargeTime end
 
 -- Whether diseases can eat (target) this cell.
-function CellModel:canBeEaten() return self.beEaten end
+function CellModel:canBeEaten() return self._beEaten end
 
 function CellModel:canPutOn(level, cellX, cellY)
     return checkPlacement(self._placement, level, cellX, cellY)
@@ -200,7 +194,7 @@ end
 -- static function under the same `canPutOn` key on the module table.
 function CellModel.canPutOnById(id, level, cellX, cellY)
     local stats = CELL_STATS[id]
-    local placement = (stats and stats._placement) or "empty"
+    local placement = (stats and stats.placement) or "empty"
     return checkPlacement(placement, level, cellX, cellY)
 end
 

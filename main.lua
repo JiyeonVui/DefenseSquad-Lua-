@@ -36,3 +36,9 @@ function love.mousereleased(x, y, button)
         current_room:mousereleased(x, y, button)
     end
 end
+
+function love.mousemoved(x, y, dx, dy)
+    if current_room and current_room.mousemoved then
+        current_room:mousemoved(x, y, dx, dy)
+    end
+end

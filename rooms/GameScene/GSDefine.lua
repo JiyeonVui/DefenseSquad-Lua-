@@ -59,17 +59,21 @@
     end
 
     -- Đổi pixel -> ô (gốc: POSITION_TO_ROW_COLUMN). Trả về col, row (0-based, có thể lẻ).
+    -- LẬT Y để là nghịch đảo đúng của cellToPixel (row lớn ở TRÊN màn hình).
     function MapLayout:pixelToCell(px, py)
+        local rows = self.rows or MapLayout.ROWS
         local col = (px - self.originX - self.tileSize / 2) / self.tileSize
-        local row = (py - self.originY - self.tileSize / 2) / self.tileSize
-        return col, row
+        local rowFromTop = (py - self.originY - self.tileSize / 2) / self.tileSize
+        return col, (rows - 1) - rowFromTop
     end
 
     -- Đổi pixel -> chỉ số ô nguyên (để biết click vào ô nào). 0-based.
+    -- LẬT Y giống cellToPixel, nếu không snap sẽ bị soi gương theo chiều dọc.
     function MapLayout:pixelToCellIndex(px, py)
+        local rows = self.rows or MapLayout.ROWS
         local col = math.floor((px - self.originX) / self.tileSize)
-        local row = math.floor((py - self.originY) / self.tileSize)
-        return col, row
+        local rowFromTop = math.floor((py - self.originY) / self.tileSize)
+        return col, (rows - 1) - rowFromTop
     end
 
     -- Kiểm tra pixel có nằm ngoài lưới không (gốc: GRASS_OUTSIDE)

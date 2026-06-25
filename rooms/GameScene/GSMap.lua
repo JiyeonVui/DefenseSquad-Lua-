@@ -62,6 +62,11 @@ function GSMap:createMap(levelModel)
     love.graphics.setCanvas()
 end
 
+-- MapLayout dùng chung (GSControlLayer phải đặt cell theo đúng layout này).
+function GSMap:getLayout()
+    return self._layout
+end
+
 function GSMap:draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.draw(self._canvas, self._layout.originX,self._layout.originY)
